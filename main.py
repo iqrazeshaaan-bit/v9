@@ -1,33 +1,5 @@
-import os
-import logging
-from datetime import datetime, timezone
-from data_engine import DataEngine
-from micro_structure import MicroStructureAnalyzer
-from discord_alert import DiscordNotifier
-from state_manager import StateManager
-import config
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-logger = logging.getLogger("MainOrchestrator")
-
-
-def run():
-    if not config.WEBHOOK_URL:
-        logger.error("⚠️ DISCORD_WEBHOOK_URL environment variable missing!")
-        return
-
-    analyzer = MicroStructureAnalyzer(
-        delta_threshold=config.DELTA_THRESHOLD,
-        oi_surge_pct=config.OI_SURGE_PCT
-    )
-    notifier = DiscordNotifier(webhook_url=config.WEBHOOK_URL)
-    state_mgr = StateManager(config.STATE_FILE, config.TRADE_LOG_FILE)
-
-    all_states = state_mgr.load_state()
-    logger.info(f"Scanning {len(config.SYMBOLS_LIST)} symbols...")
+# Ek list bana lo saare results collect karne ke liye
+    summary_results = []
 
     for symbol in config.SYMBOLS_LIST:
         logger.info(f"--- {symbol} ---")
@@ -49,6 +21,13 @@ def run():
             f"Conf: {analysis['confidence']}%"
         )
 
+        # Result save karo summary ke liye
+        summary_results.append({
+            "symbol": symbol,
+            "status": analysis["status"],
+            "price": market_data["price"]
+        })
+
         if analysis["status"] != "NEUTRAL":
             notifier.send_signal(analysis)
             state_mgr.log_signal(analysis)
@@ -61,6 +40,5 @@ def run():
 
     state_mgr.save_state(all_states)
 
-
-if __name__ == "__main__":
-    run()
+    # --- Yahan hum ek Session Summary Discord par bhejenge ---
+    notifier.send_session_summary(summary_results)
