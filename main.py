@@ -1,5 +1,5 @@
 # Ek list bana lo saare results collect karne ke liye
-    summary_results = []
+summary_results = []
 
     for symbol in config.SYMBOLS_LIST:
         logger.info(f"--- {symbol} ---")
